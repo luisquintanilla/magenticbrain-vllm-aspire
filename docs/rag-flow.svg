@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 590" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif">
+<defs><style>.ttl{font-size:22px;font-weight:700;fill:#141a21}.sub{font-size:13px;fill:#5a6672}.pt{font-size:13.5px;font-weight:700}.ps{font-size:10.5px;fill:#6b7480}.msg{font-size:11.5px;font-weight:600;fill:#2b3641}.band{font-size:11px;font-weight:700;fill:#8a7a3d}.band2{font-size:11px;font-weight:700;fill:#3f6ea5}</style><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#455A64"/></marker><filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#0b1a33" flood-opacity="0.13"/></filter></defs>
+<rect x="0" y="0" width="1000" height="590" fill="#ffffff"/>
+<text x="500" y="30" text-anchor="middle" class="ttl">How a grounded answer is produced — the RAG tool loop</text>
+<rect x="150" y="198" width="820" height="136" rx="8" fill="#FCF6E9"/>
+<text x="163" y="213" class="band">①  first-run ingestion (lazy)</text>
+<rect x="150" y="368" width="820" height="102" rx="8" fill="#EAF2FC"/>
+<text x="163" y="383" class="band2">②  retrieval</text>
+<line x1="78" y1="86" x2="78" y2="550" stroke="#c3ccd4" stroke-width="1.3" stroke-dasharray="3 4"/>
+<rect x="30" y="40" width="96" height="46" rx="10" fill="#ECEFF1" stroke="#37474F" stroke-width="1.8" filter="url(#ds)"/>
+<text x="78" y="60" text-anchor="middle" class="pt" fill="#37474F">User</text>
+<text x="78" y="75" text-anchor="middle" class="ps">browser</text>
+<line x1="250" y1="86" x2="250" y2="550" stroke="#c3ccd4" stroke-width="1.3" stroke-dasharray="3 4"/>
+<rect x="172" y="40" width="156" height="46" rx="10" fill="#EEE9FC" stroke="#512BD4" stroke-width="1.8" filter="url(#ds)"/>
+<text x="250" y="60" text-anchor="middle" class="pt" fill="#512BD4">Blazor Web</text>
+<text x="250" y="75" text-anchor="middle" class="ps">IChatClient</text>
+<line x1="460" y1="86" x2="460" y2="550" stroke="#c3ccd4" stroke-width="1.3" stroke-dasharray="3 4"/>
+<rect x="368" y="40" width="184" height="46" rx="10" fill="#EEF7E0" stroke="#4C8C1B" stroke-width="1.8" filter="url(#ds)"/>
+<text x="460" y="60" text-anchor="middle" class="pt" fill="#4C8C1B">MagenticBrain</text>
+<text x="460" y="75" text-anchor="middle" class="ps">vLLM · GPU</text>
+<line x1="650" y1="86" x2="650" y2="550" stroke="#c3ccd4" stroke-width="1.3" stroke-dasharray="3 4"/>
+<rect x="584" y="40" width="132" height="46" rx="10" fill="#FBF3DE" stroke="#B8860B" stroke-width="1.8" filter="url(#ds)"/>
+<text x="650" y="60" text-anchor="middle" class="pt" fill="#B8860B">MarkItDown</text>
+<text x="650" y="75" text-anchor="middle" class="ps">MCP</text>
+<line x1="800" y1="86" x2="800" y2="550" stroke="#c3ccd4" stroke-width="1.3" stroke-dasharray="3 4"/>
+<rect x="738" y="40" width="124" height="46" rx="10" fill="#E7F0FB" stroke="#1565C0" stroke-width="1.8" filter="url(#ds)"/>
+<text x="800" y="60" text-anchor="middle" class="pt" fill="#1565C0">Ollama</text>
+<text x="800" y="75" text-anchor="middle" class="ps">embeddings</text>
+<line x1="935" y1="86" x2="935" y2="550" stroke="#c3ccd4" stroke-width="1.3" stroke-dasharray="3 4"/>
+<rect x="875" y="40" width="120" height="46" rx="10" fill="#EEF1F4" stroke="#5F6B7A" stroke-width="1.8" filter="url(#ds)"/>
+<text x="935" y="60" text-anchor="middle" class="pt" fill="#5F6B7A">SqliteVec</text>
+<text x="935" y="75" text-anchor="middle" class="ps">vector store</text>
+<line x1="78" y1="118" x2="250" y2="118" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="27.8" y="99" width="272.3" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="164.0" y="111" text-anchor="middle" class="msg">asks: “what does the water filter remove?”</text>
+<line x1="250" y1="152" x2="460" y2="152" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="225.0" y="133" width="260.0" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="355.0" y="145" text-anchor="middle" class="msg">chat + tools  [ LoadDocuments , Search ]</text>
+<line x1="460" y1="186" x2="250" y2="186" stroke="#455A64" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<rect x="258.8" y="167" width="192.4" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="355.0" y="179" text-anchor="middle" class="msg">① tool call:  LoadDocuments()</text>
+<line x1="250" y1="220" x2="650" y2="220" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="399.9" y="201" width="100.1" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="450.0" y="213" text-anchor="middle" class="msg">PDF → Markdown</text>
+<line x1="250" y1="254" x2="800" y2="254" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="450.4" y="235" width="149.3" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="525.0" y="247" text-anchor="middle" class="msg">embed chunks → 768-dim</text>
+<line x1="250" y1="288" x2="935" y2="288" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="545.5" y="269" width="94.0" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="592.5" y="281" text-anchor="middle" class="msg">store vectors</text>
+<line x1="250" y1="322" x2="460" y2="322" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="249.6" y="303" width="210.8" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="355.0" y="315" text-anchor="middle" class="msg">tool result:  documents ingested</text>
+<line x1="460" y1="356" x2="250" y2="356" stroke="#455A64" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<rect x="265.0" y="337" width="180.1" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="355.0" y="349" text-anchor="middle" class="msg">② tool call:  Search(query)</text>
+<line x1="250" y1="390" x2="800" y2="390" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="453.4" y="371" width="143.2" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="525.0" y="383" text-anchor="middle" class="msg">embed query → 768-dim</text>
+<line x1="250" y1="424" x2="935" y2="424" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="524.0" y="405" width="137.0" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="592.5" y="417" text-anchor="middle" class="msg">top-k similar chunks</text>
+<line x1="250" y1="458" x2="460" y2="458" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="252.7" y="439" width="204.7" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="355.0" y="451" text-anchor="middle" class="msg">tool result:  retrieved context</text>
+<line x1="460" y1="492" x2="250" y2="492" stroke="#455A64" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<rect x="255.8" y="473" width="198.5" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="355.0" y="485" text-anchor="middle" class="msg">grounded answer  +  &lt;citation&gt;</text>
+<line x1="250" y1="526" x2="78" y2="526" stroke="#455A64" stroke-width="1.7" marker-end="url(#a)"/>
+<rect x="74.0" y="507" width="180.1" height="16" rx="8" fill="#ffffff" stroke="#d3dae1"/>
+<text x="164.0" y="519" text-anchor="middle" class="msg">render answer with citation</text>
+</svg>

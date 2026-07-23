@@ -13,6 +13,14 @@ vector store. No cloud endpoints, no API keys.
 
 ## Architecture
 
+<p align="center">
+  <img src="docs/architecture.svg" width="820"
+       alt="A .NET Aspire AppHost orchestrates four containers: a Blazor chat web app, a vLLM GPU container serving MagenticBrain over an OpenAI-compatible /v1 endpoint, an Ollama CPU container for nomic-embed-text embeddings, and a MarkItDown MCP container for PDF-to-Markdown conversion. The web app reads and writes a local SqliteVec vector store.">
+</p>
+
+<details>
+<summary>Text version of the architecture</summary>
+
 ```
 .NET Aspire AppHost  (orchestrates everything, dashboard for logs/health/traces)
 │
@@ -31,6 +39,8 @@ vector store. No cloud endpoints, no API keys.
                     vector DB  → SqliteVec (local file vector-store.db, 768-dim)
                     ingestion  → MarkItDown MCP + wwwroot/Data
 ```
+
+</details>
 
 Why two model servers? MagenticBrain is a chat/orchestration model, not an embedding model,
 and vLLM serves one model per process. Embeddings therefore run separately on Ollama (CPU) so
@@ -96,6 +106,14 @@ retrieved text with a citation**. If the documents don't contain the answer, it 
 of hallucinating.
 
 ## How it works (key decisions)
+
+<p align="center">
+  <img src="docs/rag-flow.svg" width="900"
+       alt="Sequence diagram of the RAG tool loop. The user asks the Blazor web app a question. MagenticBrain on vLLM first calls the LoadDocuments tool: MarkItDown converts the PDF to Markdown, Ollama embeds the chunks into 768-dimensional vectors, and the vectors are stored in SqliteVec. MagenticBrain then calls the Search tool: the query is embedded and the top-k similar chunks are retrieved from SqliteVec. Finally MagenticBrain returns a grounded answer with a citation, which the web app renders to the user.">
+</p>
+
+The answer is produced by a two-tool loop the model drives itself — `LoadDocuments` (lazy,
+first-run ingestion) then `Search` (retrieval) — before it composes a grounded, cited reply.
 
 - **4-bit to fit 16 GB.** A 14B model is ~28 GB in FP16. Served at bitsandbytes NF4 the weights
   are ~8–9 GB; with `--max-model-len 16384 --gpu-memory-utilization 0.90 --max-num-seqs 16` the

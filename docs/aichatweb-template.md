@@ -1,5 +1,11 @@
 # AI Chat with Custom Data
 
+> **Note** — This is the **stock `aichatweb` template README**, kept for reference. This project
+> does **not** use the cloud OpenAI path described below: it serves `microsoft/MagenticBrain`
+> locally via vLLM and needs **no OpenAI API key**. See the [main README](../README.md) for how
+> this repo actually runs. The Docker/Ollama, localhost-certificate, and JavaScript-dependency
+> notes below still apply.
+
 This project is an AI chat application that demonstrates how to chat with custom data using an AI language model. Please note that this template is currently in an early preview stage. If you have feedback, please take a [brief survey](https://aka.ms/dotnet-chat-templatePreview2-survey).
 
 >[!NOTE]
