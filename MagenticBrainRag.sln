@@ -1,0 +1,34 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{E7771A66-BDA3-4FB8-8319-F6EEAF4B06BA}") = "MagenticBrainRag.AppHost", "MagenticBrainRag.AppHost\MagenticBrainRag.AppHost.csproj", "{C1A03D3E-AC7E-4D97-A528-A005B56E52F0}"
+EndProject
+Project("{E7771A66-BDA3-4FB8-8319-F6EEAF4B06BA}") = "MagenticBrainRag.ServiceDefaults", "MagenticBrainRag.ServiceDefaults\MagenticBrainRag.ServiceDefaults.csproj", "{0CA52C9D-3A68-4EA8-8B06-1A3E0A85CD83}"
+EndProject
+Project("{E7771A66-BDA3-4FB8-8319-F6EEAF4B06BA}") = "MagenticBrainRag.Web", "MagenticBrainRag.Web\MagenticBrainRag.Web.csproj", "{90B4DA16-3B0C-4935-904A-0F6695859A73}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C1A03D3E-AC7E-4D97-A528-A005B56E52F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1A03D3E-AC7E-4D97-A528-A005B56E52F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1A03D3E-AC7E-4D97-A528-A005B56E52F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1A03D3E-AC7E-4D97-A528-A005B56E52F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CA52C9D-3A68-4EA8-8B06-1A3E0A85CD83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CA52C9D-3A68-4EA8-8B06-1A3E0A85CD83}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CA52C9D-3A68-4EA8-8B06-1A3E0A85CD83}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CA52C9D-3A68-4EA8-8B06-1A3E0A85CD83}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90B4DA16-3B0C-4935-904A-0F6695859A73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90B4DA16-3B0C-4935-904A-0F6695859A73}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90B4DA16-3B0C-4935-904A-0F6695859A73}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90B4DA16-3B0C-4935-904A-0F6695859A73}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
