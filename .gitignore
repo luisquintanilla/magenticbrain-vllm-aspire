@@ -1,0 +1,27 @@
+# .NET build output
+bin/
+obj/
+artifacts/
+*.user
+.vs/
+TestResults/
+
+# Aspire / local runtime state
+**/appsettings.*.local.json
+.env
+*.env
+
+# RAG local vector store + ingestion cache (regenerated at runtime)
+vector-store.db
+*.vector-store.db
+**/wwwroot/Data/**/ingestion.cache
+
+# Local model / HF / Ollama caches (never commit weights)
+.cache/
+hf-cache/
+models/
+ollama/
+
+# Secrets
+secrets.json
+*.secrets.json
