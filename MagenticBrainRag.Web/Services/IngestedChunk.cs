@@ -5,7 +5,7 @@ namespace MagenticBrainRag.Web.Services;
 
 public class IngestedChunk
 {
-    public const int VectorDimensions = 1536; // 1536 is the default vector size for the OpenAI nomic-embed-text model
+    public const int VectorDimensions = 768; // nomic-embed-text produces 768-dimensional embeddings
     public const string VectorDistanceFunction = DistanceFunction.CosineDistance;
     public const string CollectionName = "data-magenticbrainrag-chunks";
 

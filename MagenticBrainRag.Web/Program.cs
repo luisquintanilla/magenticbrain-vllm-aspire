@@ -1,3 +1,4 @@
+using System.ClientModel;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using MagenticBrainRag.Web.Components;
@@ -8,12 +9,34 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
-var openai = builder.AddOpenAIClient("openai");
-openai.AddChatClient("microsoft/MagenticBrain")
+// Chat: microsoft/MagenticBrain served by vLLM over its OpenAI-compatible API.
+// vLLM ignores the API key, but the OpenAI client requires a non-empty credential.
+// The endpoint is injected by the AppHost (VLLM_ENDPOINT -> the vllm container URL).
+var vllmEndpoint = builder.Configuration["VLLM_ENDPOINT"]
+    ?? throw new InvalidOperationException(
+        "VLLM_ENDPOINT is not configured. Run through the Aspire AppHost, or set it to e.g. http://localhost:8000.");
+var chatClient = new OpenAIClient(
+        new ApiKeyCredential("not-used"),
+        new OpenAIClientOptions { Endpoint = new Uri($"{vllmEndpoint.TrimEnd('/')}/v1") })
+    .GetChatClient("microsoft/MagenticBrain")
+    .AsIChatClient();
+
+builder.Services.AddChatClient(chatClient)
+    // MagenticBrain's model card sampling: temp 0.7, top_p 0.8, presence_penalty 1.0
+    // (avoid greedy decoding). Applied as defaults so every call is consistent.
+    .ConfigureOptions(options =>
+    {
+        options.Temperature ??= 0.7f;
+        options.TopP ??= 0.8f;
+        options.PresencePenalty ??= 1.0f;
+    })
     .UseFunctionInvocation()
     .UseOpenTelemetry(configure: c =>
         c.EnableSensitiveData = builder.Environment.IsDevelopment());
-openai.AddEmbeddingGenerator("nomic-embed-text");
+
+// Embeddings: nomic-embed-text served by Ollama on CPU (keeps all VRAM for the LLM).
+builder.AddOllamaApiClient("embedding")
+    .AddEmbeddingGenerator();
 
 var vectorStorePath = Path.Combine(AppContext.BaseDirectory, "vector-store.db");
 var vectorStoreConnectionString = $"Data Source={vectorStorePath}";
