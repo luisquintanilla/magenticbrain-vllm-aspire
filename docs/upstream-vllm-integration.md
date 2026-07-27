@@ -1,7 +1,8 @@
 # Upstreaming the vLLM integration to CommunityToolkit/Aspire (staged notes)
 
 **Status: staged — do NOT submit yet.** This maps the in-repo `CommunityToolkit.Aspire.Hosting.VLLM`
-integration to the [CommunityToolkit/Aspire](https://github.com/CommunityToolkit/Aspire) repository
+(hosting) and `CommunityToolkit.Aspire.VLLM` (client) integrations to the
+[CommunityToolkit/Aspire](https://github.com/CommunityToolkit/Aspire) repository
 so a PR can be opened later. It follows the toolkit's
 [`docs/create-integration.md`](https://github.com/CommunityToolkit/Aspire/blob/main/docs/create-integration.md)
 checklist (verified against the repo's current `main`).
@@ -11,8 +12,8 @@ pass here. These are the deltas required to land it upstream.
 
 ## Prerequisites (before any PR)
 
-1. **Open a feature-request issue** in CommunityToolkit/Aspire proposing the vLLM hosting integration
-   and get a maintainer 👍 (their contribution flow expects this first).
+1. **Open a feature-request issue** in CommunityToolkit/Aspire proposing the vLLM hosting + client
+   integrations and get a maintainer 👍 (their contribution flow expects this first).
 2. **Sign the .NET Foundation CLA** (the PR bot blocks merge until signed).
 3. Read `CONTRIBUTING.md` + `docs/setup.md` for the (somewhat involved) polyglot dev-environment setup.
 
@@ -116,8 +117,65 @@ add the baseline files for the new public surface (`AddVLLM`, `WithGPUSupport`, 
   `Endpoint=scheme://host:port`, `--gpus all` / `-rocm` for the GPU vendors) is covered by
   `AddVLLMTests.cs` — reuse those as the regression guard.
 
+## Client integration (`CommunityToolkit.Aspire.VLLM`)
+
+A thin, OpenAI-compatible **client** integration that pairs with the hosting resource above.
+Extension methods live in namespace **`Microsoft.Extensions.Hosting`** (per the guide's
+client-integration convention — note the package name has **no `.Hosting`** segment).
+
+### File mapping (in-repo → upstream)
+
+| In this repo | Upstream path | Notes |
+| --- | --- | --- |
+| `src/CommunityToolkit.Aspire.VLLM/AspireVLLMExtensions.cs` | same | `AddVLLMClient` / `AddKeyedVLLMClient` |
+| `src/CommunityToolkit.Aspire.VLLM/AspireVLLMChatClientExtensions.cs` | same | `AddChatClient` / `AddKeyedChatClient` |
+| `src/CommunityToolkit.Aspire.VLLM/AspireVLLMClientBuilder.cs` | same | builder returned by `AddVLLMClient` |
+| `src/CommunityToolkit.Aspire.VLLM/VLLMClientSettings.cs` | same | bound from `Aspire:VLLM:<name>` |
+| `src/CommunityToolkit.Aspire.VLLM/VLLMHealthCheck.cs` | same | `GET {endpoint}/health` |
+| `src/CommunityToolkit.Aspire.VLLM/README.md` | same | NuGet package readme |
+| `tests/CommunityToolkit.Aspire.VLLM.Tests/*` | same | unit tests (no live server) via `HostApplicationBuilder` |
+| `examples/vllm/CommunityToolkit.Aspire.VLLM.ConsumerApp/*` | same | minimal consumer exercising `AddVLLMClient` |
+
+### Required changes for upstream
+- **`.csproj` cleanup:** the toolkit's `Directory.Build.props` supplies packaging metadata. Keep the
+  `Microsoft.Extensions.AI` + `Microsoft.Extensions.AI.OpenAI` refs (the OpenAI SDK is the wrapped
+  client), the health-check / config-binder / hosting-abstractions refs, and
+  `OpenTelemetry.Extensions.Hosting` (source registration) — unless a sibling client integration
+  already centralizes some of these. Keep `Description` + `AdditionalPackageTags` (**include `client`**)
+  and `InternalsVisibleTo` for the test project.
+- **CODEOWNERS / root-README row / `tests.yml`:** add the same three deltas as the hosting package, for
+  the client `src`, `tests`, and example consumer paths (the `tests.yml` list is regenerated, not
+  hand-edited).
+- **Public API baseline:** if enabled, add `AddVLLMClient`, `AddKeyedVLLMClient`, `AddChatClient`,
+  `AddKeyedChatClient`, `AspireVLLMClientBuilder`, and `VLLMClientSettings` to the baseline files.
+- **Solution:** register the client `src`, `tests`, and consumer projects in `CommunityToolkit.Aspire.slnx`.
+
+### Novelty vs. `Aspire.OpenAI`'s `AddOpenAIClient` (reviewer justification)
+vLLM is OpenAI-compatible, so a reviewer may reasonably ask "why not just use `AddOpenAIClient`?" What
+the vLLM client adds on top of the generic OpenAI client:
+- **Connection-string pairing** with the vLLM *hosting* resource: `WithReference(vllm)` → the client
+  resolves `Endpoint=scheme://host:port` and appends `/v1` automatically (the hosting resource emits
+  the base URL **without** `/v1`, so a raw `AddOpenAIClient` would 404 until manually fixed up).
+- **vLLM-correct defaults:** a **placeholder API key** (vLLM ignores it, but the OpenAI SDK rejects an
+  empty credential — a common first-run trap) and the **served model name** (`--served-model-name`).
+- **A vLLM `/health` health check** (vLLM's readiness endpoint), which the generic OpenAI client lacks.
+
+If maintainers prefer, this could instead ship as a **defaults layer over `AddOpenAIClient`** rather
+than a standalone package — flag for discussion.
+
+### Naming / API notes for reviewers
+- **Shape:** `AddVLLMClient(name).AddChatClient()` mirrors `AddOllamaApiClient(name).AddChatClient()`
+  and leaves room for `.AddEmbeddingGenerator()` (vLLM can serve embedding models too). A single-call
+  `AddVLLMChatClient(name)` is a viable alternative — reviewer's choice.
+- **Casing:** `VLLM` throughout (matches the hosting package); confirm `VLLM` vs `Vllm`.
+- **Thin by design:** vLLM-specific per-request knobs (thinking toggle, guided/structured-output
+  defaults) are intentionally **out of scope** — they are handled server-side (chat template, tool-call
+  parser) or via generic `Microsoft.Extensions.AI` primitives. Cite
+  [`iwaitu/vllmchatclient`](https://github.com/iwaitu/vllmchatclient) (MPL-2.0) in docs as the richer
+  alternative; do **not** vendor it.
+
 ## Not part of the upstream PR
 The MagenticBrain-specific bits stay in **this** repo and must not leak into the toolkit PR: the local
 `magenticbrain-vllm:local` image override, the non-thinking chat template, bitsandbytes/NF4 serving
 args, the quantizer pipeline, and the WSL2 pin-memory env var. Upstream ships only the generic
-`AddVLLM` building block.
+`AddVLLM` (hosting) and `AddVLLMClient` (client) building blocks.

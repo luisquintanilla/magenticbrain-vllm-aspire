@@ -82,6 +82,24 @@ The integration is authored to be **upstream-portable** (file/namespace layout m
 CommunityToolkit/Aspire) with unit tests (`tests/`) and a minimal example (`examples/vllm/`); it is
 staged for a possible contribution but not yet submitted.
 
+## vLLM client integration (`AddVLLMClient`)
+
+The Web app consumes the server through a matching thin **client** integration,
+`CommunityToolkit.Aspire.VLLM` (also under `src/`), rather than a hand-rolled `OpenAIClient`. The
+AppHost hands the endpoint over with `.WithReference(vllm)` (the hosting resource is
+`IResourceWithConnectionString`, emitting `Endpoint=scheme://host:port`), and
+`builder.AddVLLMClient("vllm").AddChatClient()` resolves it: it appends `/v1`, injects a placeholder
+API key (vLLM ignores it, but the OpenAI client rejects an empty credential), targets the served
+model name, and registers a `/health` check plus OpenTelemetry. Extension methods live in the
+`Microsoft.Extensions.Hosting` namespace, per the toolkit's client-integration convention.
+
+It is deliberately **thin**: everything a richer vLLM client might add is handled elsewhere in this
+app — non-thinking via the chat template (below), tool-calling via vLLM's server flags consumed by
+generic `.UseFunctionInvocation()`, and structured output is unused — so the integration only wraps
+the OpenAI SDK with vLLM-correct defaults. Unit tests are in `tests/CommunityToolkit.Aspire.VLLM.Tests/`
+and a minimal consumer in `examples/vllm/CommunityToolkit.Aspire.VLLM.ConsumerApp/`; like the hosting
+package it is staged for a possible upstream contribution.
+
 ## Non-thinking by default (chat template patch)
 
 MagenticBrain is a Qwen3 *hybrid* reasoning model: by default it emits `<think>…</think>` blocks.
@@ -111,10 +129,11 @@ hacks.
 The `aichatweb` template assumes a single OpenAI-compatible endpoint for both chat and embeddings.
 Here they're split in `MagenticBrainRag.Web/Program.cs`:
 
-- **Chat** → a raw `OpenAIClient` pointed at `"{VLLM_ENDPOINT}/v1"` with a dummy credential
-  (`ApiKeyCredential("not-used")`; vLLM ignores it but the client requires non-empty), model id
-  `microsoft/MagenticBrain`, `.AsIChatClient()`, `.UseFunctionInvocation()`, and model-card
-  sampling defaults via `.ConfigureOptions`.
+- **Chat** → `builder.AddVLLMClient("vllm").AddChatClient()` (the client integration above): resolves
+  the vLLM endpoint from the injected `vllm` connection string, appends `/v1`, uses a placeholder
+  credential (vLLM ignores it but the client requires non-empty), targets model id
+  `microsoft/MagenticBrain`, then `.ConfigureOptions` (model-card sampling defaults) and
+  `.UseFunctionInvocation()`.
 - **Embeddings** → `AddOllamaApiClient("embedding").AddEmbeddingGenerator()` (Aspire Community
   Toolkit / OllamaSharp).
 

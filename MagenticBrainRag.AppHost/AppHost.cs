@@ -120,7 +120,7 @@ var markitdown = builder.AddContainer("markitdown", "mcp/markitdown")
     .WithHttpEndpoint(targetPort: 3001, name: "http");
 
 builder.AddProject<Projects.MagenticBrainRag_Web>("aichatweb-app")
-    .WithEnvironment("VLLM_ENDPOINT", vllm.GetEndpoint("http"))
+    .WithReference(vllm)
     .WithReference(embeddings)
     .WithEnvironment("MARKITDOWN_MCP_URL", markitdown.GetEndpoint("http"))
     .WaitFor(vllm)

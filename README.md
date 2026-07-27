@@ -161,9 +161,9 @@ one-shot job gated before vLLM.
 
 See [`quantizer/README.md`](quantizer/README.md) for the standalone CLI (flags, env vars, examples).
 
-## Aspire vLLM integration (`AddVLLM`)
+## Aspire vLLM integrations (`AddVLLM` + `AddVLLMClient`)
 
-The AppHost serves vLLM through a self-contained, upstream-ready integration in
+The AppHost serves vLLM through a self-contained, upstream-ready **hosting** integration in
 [`src/CommunityToolkit.Aspire.Hosting.VLLM/`](src/CommunityToolkit.Aspire.Hosting.VLLM/), mirroring
 the shape of the Community Toolkit's Ollama integration:
 
@@ -181,6 +181,29 @@ MagenticBrain serving args. Unit tests live in
 [`tests/CommunityToolkit.Aspire.Hosting.VLLM.Tests/`](tests/CommunityToolkit.Aspire.Hosting.VLLM.Tests/)
 and a minimal demo in [`examples/vllm/`](examples/vllm/). It's staged for a future
 [CommunityToolkit/Aspire](https://github.com/CommunityToolkit/Aspire) contribution.
+
+### Client integration (`AddVLLMClient`)
+
+The Web app consumes vLLM through a matching thin **client** integration in
+[`src/CommunityToolkit.Aspire.VLLM/`](src/CommunityToolkit.Aspire.VLLM/). The AppHost passes the
+endpoint with `.WithReference(vllm)` and `MagenticBrainRag.Web/Program.cs` resolves it as an
+`IChatClient`:
+
+```csharp
+builder.AddVLLMClient("vllm", settings => settings.Model = "microsoft/MagenticBrain")
+    .AddChatClient()
+    .ConfigureOptions(o => { o.Temperature ??= 0.7f; o.TopP ??= 0.8f; o.PresencePenalty ??= 1.0f; })
+    .UseFunctionInvocation();
+```
+
+It reads the hosting resource's `Endpoint=scheme://host:port` connection string, appends `/v1`,
+supplies a placeholder API key (vLLM ignores it, but the OpenAI client requires a non-empty
+credential), and registers a `/health` check plus OpenTelemetry. It stays deliberately thin — vLLM's
+non-thinking/tool-calling behavior is configured server-side, so no vLLM-specific client knobs are
+needed. Unit tests live in
+[`tests/CommunityToolkit.Aspire.VLLM.Tests/`](tests/CommunityToolkit.Aspire.VLLM.Tests/) and a minimal
+consumer in
+[`examples/vllm/CommunityToolkit.Aspire.VLLM.ConsumerApp/`](examples/vllm/CommunityToolkit.Aspire.VLLM.ConsumerApp/).
 
 ## Troubleshooting
 
@@ -205,12 +228,13 @@ docker/vllm-magenticbrain/   Dockerfile + non-thinking chat template (magenticbr
 scripts/                     build-image.sh, prequantize.sh/.py (manual pre-warm), run.sh
 quantizer/                   reproducible uv-packaged quantization CLI (quantize.py + manifest)
 models/                      pre-quantized NF4 checkpoint (gitignored, created by the quantizer)
-src/CommunityToolkit.Aspire.Hosting.VLLM/   upstream-ready AddVLLM integration
+src/CommunityToolkit.Aspire.Hosting.VLLM/   upstream-ready AddVLLM hosting integration
+src/CommunityToolkit.Aspire.VLLM/           upstream-ready AddVLLMClient client integration
 MagenticBrainRag.AppHost/    Aspire orchestration (AppHost.cs)
 MagenticBrainRag.Web/        Blazor chat UI, RAG ingestion/search, client wiring (Program.cs)
 MagenticBrainRag.ServiceDefaults/   shared Aspire service defaults
-tests/                       AddVLLM integration unit + AppHost tests
-examples/vllm/               minimal AddVLLM demo AppHost
+tests/                       AddVLLM + AddVLLMClient integration unit tests (+ AppHost tests)
+examples/vllm/               minimal AddVLLM AppHost + AddVLLMClient consumer demo
 docs/                        design-notes.md, aichatweb-template.md, upstream-vllm-integration.md
 ```
 

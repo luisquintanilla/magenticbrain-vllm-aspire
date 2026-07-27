@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\CommunityToolkit.Aspire.Hosting.VLLM\CommunityToolkit.Aspire.Hosting.VLLM.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\CommunityToolkit.Aspire.VLLM.ConsumerApp\CommunityToolkit.Aspire.VLLM.ConsumerApp.csproj" />
   </ItemGroup>
 
 </Project>
