@@ -24,6 +24,9 @@ vector store. No cloud endpoints, no API keys.
 ```
 Aspire AppHost  (orchestrates everything, dashboard for logs/health/traces)
 │
+├── quantizer       one-shot job (uv on host, or pinned CUDA container) — gates vLLM
+│                   GPU, writes models/MagenticBrain-bnb-nf4 (NF4), idempotent (manifest)
+│
 ├── vllm            custom image: vllm/vllm-openai + bitsandbytes + non-thinking template
 │                   GPU (--gpus all --ipc host), serves MagenticBrain 4-bit (NF4)
 │                   OpenAI-compatible /v1  →  IChatClient (tool-calling, non-thinking)
@@ -53,6 +56,10 @@ they don't compete with the 14B model for VRAM.
   works through the Windows NVIDIA driver.
   - Smoke test: `docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi`
 - **.NET 10 SDK** (projects target `net10.0`).
+- **[uv](https://docs.astral.sh/uv/)** — for the default quantization path (the Aspire-orchestrated
+  quantizer runs as a `uv` project on the host). Not needed if you set `UseContainerQuant=true`
+  (the reproducible container path) or pre-quantize manually. Install:
+  `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 - **Aspire CLI ≥ 13.4** (optional — `scripts/run.sh` uses `dotnet run` and does not need
   the CLI). Install/update: `curl -sSL https://aspire.dev/install.sh | bash`.
 - **~30 GB free disk**: the FP16 weights (~28 GB) download once to the Hugging Face cache, plus
@@ -72,20 +79,25 @@ From the repository root:
 Layers `bitsandbytes` and a non-thinking chat template onto `vllm/vllm-openai`. First run pulls
 the ~10 GB base image.
 
-### 2. Pre-quantize the model (strongly recommended, one-time)
+### 2. Quantize the model
 
-```bash
-./scripts/prequantize.sh          # writes models/MagenticBrain-bnb-nf4/ (~9 GB, gitignored)
-```
+Quantization is an **automatic, idempotent step in the stack** — an Aspire-orchestrated job runs
+`quantizer/quantize.py`, writes a 4-bit NF4 checkpoint to `models/MagenticBrain-bnb-nf4/`, and
+**gates vLLM** (`WaitForCompletion`) so the server only starts once the checkpoint exists. It runs
+**once**: a matching checkpoint + reproducibility manifest make later starts exit in ~2 s.
 
-vLLM's *in-flight* bitsandbytes quantization is CPU-bound and takes **~28 minutes on every
-start**. This script quantizes once **on the GPU (~40 s)** and saves a ready-made NF4
-checkpoint; vLLM then loads it in **~10 s**. The first run downloads the ~28 GB FP16 weights to
-`~/.cache/huggingface`. The AppHost auto-detects the checkpoint and uses it; without it, it
-falls back to (slow) in-flight quantization.
+Two execution modes (see [Quantization pipeline](#quantization-pipeline)):
 
-> Free the GPU before running this (stop any running vLLM container) — quantization needs the
-> full 16 GB.
+- **Dev (default):** a polyglot `uv` job on the host (`AddPythonApp(...).WithUv()`). First run
+  `uv sync`s torch/transformers and quantizes on the GPU (~40 s). Needs `uv`.
+- **Reproducible:** set `UseContainerQuant=true` to run the same script inside the pinned vLLM CUDA
+  image instead (no host Python toolchain).
+
+The first run downloads the ~28 GB FP16 weights to `~/.cache/huggingface`. You can still pre-warm
+manually with `./scripts/prequantize.sh`; the orchestrated job then detects the checkpoint and skips.
+
+> Free the GPU before the first quantization (stop any running vLLM container) — it needs the full
+> 16 GB.
 
 ### 3. Run the stack
 
@@ -129,12 +141,54 @@ first-run ingestion) then `Search` (retrieval) — before it composes a grounded
 See [`docs/design-notes.md`](docs/design-notes.md) for the full rationale, VRAM tuning, and
 gotchas (WSL2, dev certs, Ollama, lazy ingestion).
 
+## Quantization pipeline
+
+The 4-bit checkpoint is produced by a small, reproducible CLI in [`quantizer/`](quantizer/) — a
+`uv` project (`quantize.py`, stdlib `argparse`, lazy ML imports) that the AppHost orchestrates as a
+one-shot job gated before vLLM.
+
+- **Configurable** via Aspire parameters (defaults in `MagenticBrainRag.AppHost/appsettings.json`
+  under `Parameters`, overridable by user-secrets/env): `model-id`, `quant-method` (`nf4`/`fp4`),
+  `quant-dtype`, `double-quant`, and optional `hf-token` (secret; only wired when set).
+- **Reproducible.** Beside the checkpoint it writes a `manifest.json` — the resolved Hugging Face
+  revision, quant settings, resolved `torch`/`transformers`/`bitsandbytes`/`vllm` versions, and
+  per-file SHA-256s.
+- **Idempotent.** If the checkpoint plus a manifest with a matching signature already exist, the job
+  exits almost immediately (no GPU load); `--force` / `FORCE=1` rebuilds.
+- **Hybrid execution.** `UseContainerQuant=false` (default) runs it via `uv` on the host;
+  `true` runs the identical script inside the pinned vLLM CUDA image. Both write the same host
+  checkpoint and both gate vLLM.
+
+See [`quantizer/README.md`](quantizer/README.md) for the standalone CLI (flags, env vars, examples).
+
+## Aspire vLLM integration (`AddVLLM`)
+
+The AppHost serves vLLM through a self-contained, upstream-ready integration in
+[`src/CommunityToolkit.Aspire.Hosting.VLLM/`](src/CommunityToolkit.Aspire.Hosting.VLLM/), mirroring
+the shape of the Community Toolkit's Ollama integration:
+
+```csharp
+var vllm = builder.AddVLLM("vllm")
+    .WithGPUSupport()          // NVIDIA (default) or VLLMGpuVendor.AMD (ROCm)
+    .WithDataVolume()          // persist the Hugging Face cache
+    .WithModel("Qwen/Qwen3-8B");
+```
+
+`AddVLLM` wires the `vllm/vllm-openai` image, an `http` endpoint on 8000, and a `/health` check
+(healthy only once the model is loaded, so `WaitFor` dependents block correctly). This repo's
+AppHost overrides the image with the local `magenticbrain-vllm:local` build and passes the
+MagenticBrain serving args. Unit tests live in
+[`tests/CommunityToolkit.Aspire.Hosting.VLLM.Tests/`](tests/CommunityToolkit.Aspire.Hosting.VLLM.Tests/)
+and a minimal demo in [`examples/vllm/`](examples/vllm/). It's staged for a future
+[CommunityToolkit/Aspire](https://github.com/CommunityToolkit/Aspire) contribution.
+
 ## Troubleshooting
 
 - **`RuntimeError: UVA is not available` on WSL2.** WSL2 disables CUDA pinned memory; the AppHost
   sets `VLLM_WSL2_ENABLE_PIN_MEMORY=1` on the container to fix it.
-- **Model load looks stuck for ~28 min.** You're on the in-flight quantization path — run
-  `./scripts/prequantize.sh` once for ~10 s loads thereafter.
+- **Model load looks stuck for ~28 min.** vLLM is quantizing in-flight because no NF4 checkpoint was
+  found. The orchestrated quantization job normally prevents this — check that the `quantizer`
+  resource completed (the default dev path needs `uv`), or pre-warm with `./scripts/prequantize.sh`.
 - **HTTPS / dev-cert errors, or the dashboard won't bind on WSL2.** Use `./scripts/run.sh` (http
   profile + `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true`).
 - **`aspire run` fails with a JSON-RPC/backchannel error.** Your Aspire CLI is older than the
@@ -148,12 +202,16 @@ gotchas (WSL2, dev certs, Ollama, lazy ingestion).
 
 ```
 docker/vllm-magenticbrain/   Dockerfile + non-thinking chat template (magenticbrain-vllm:local)
-scripts/                     build-image.sh, prequantize.sh/.py, run.sh
-models/                      pre-quantized NF4 checkpoint (gitignored, created by prequantize)
+scripts/                     build-image.sh, prequantize.sh/.py (manual pre-warm), run.sh
+quantizer/                   reproducible uv-packaged quantization CLI (quantize.py + manifest)
+models/                      pre-quantized NF4 checkpoint (gitignored, created by the quantizer)
+src/CommunityToolkit.Aspire.Hosting.VLLM/   upstream-ready AddVLLM integration
 MagenticBrainRag.AppHost/    Aspire orchestration (AppHost.cs)
 MagenticBrainRag.Web/        Blazor chat UI, RAG ingestion/search, client wiring (Program.cs)
 MagenticBrainRag.ServiceDefaults/   shared Aspire service defaults
-docs/                        design-notes.md, aichatweb-template.md
+tests/                       AddVLLM integration unit + AppHost tests
+examples/vllm/               minimal AddVLLM demo AppHost
+docs/                        design-notes.md, aichatweb-template.md, upstream-vllm-integration.md
 ```
 
 ## License

@@ -12,11 +12,13 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.0" />
+    <PackageReference Include="Aspire.Hosting.Python" Version="13.4.0" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.4.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MagenticBrainRag.Web\MagenticBrainRag.Web.csproj" />
+    <ProjectReference Include="..\src\CommunityToolkit.Aspire.Hosting.VLLM\CommunityToolkit.Aspire.Hosting.VLLM.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 
 </Project>

@@ -26,3 +26,11 @@ ollama/
 # Secrets
 secrets.json
 *.secrets.json
+
+# Python (quantizer/) — keep uv.lock tracked, ignore envs & caches
+__pycache__/
+*.py[cod]
+.venv/
+**/.venv/
+.uv/
+*.egg-info/

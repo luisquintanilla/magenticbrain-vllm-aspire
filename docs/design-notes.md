@@ -23,21 +23,64 @@ The official `vllm/vllm-openai` image does **not** ship bitsandbytes, hence the 
 ## Pre-quantization: 28 minutes → 10 seconds
 
 vLLM can quantize to bitsandbytes **in-flight**, but that path is CPU-bound and takes **~28 min on
-every startup** — unacceptable for an orchestrated dev loop.
+every startup** — unacceptable for an orchestrated dev loop. Instead the checkpoint is produced
+**once, on the GPU** (transformers `BitsAndBytesConfig`), and vLLM loads it in **~10 s**.
 
-`scripts/prequantize.py` instead quantizes **once, on the GPU**, using transformers:
+That quantization is now a **reproducible, configurable, composable pipeline** rather than a one-off
+script. The core is `quantizer/quantize.py` — a `uv` project using stdlib `argparse` with lazy ML
+imports (so `--help` and up-to-date checks run without importing torch):
 
 - `BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,
-  bnb_4bit_compute_dtype=bfloat16)` + `device_map={"": 0}`, then `save_pretrained`.
-- Produces `models/MagenticBrain-bnb-nf4/` whose `config.json` carries
-  `quantization_config.quant_method = "bitsandbytes"`.
-- GPU quantization takes ~40 s; vLLM then **loads the checkpoint in ~10 s**.
+  bnb_4bit_compute_dtype=bfloat16)` + `device_map={"": 0}`, then `save_pretrained` →
+  `models/MagenticBrain-bnb-nf4/` whose `config.json` carries
+  `quantization_config.quant_method = "bitsandbytes"`. GPU quantization ~40 s.
+- **Configurable** by env vars / CLI flags: `MODEL_ID`, `QUANT_METHOD`, `QUANT_DTYPE`, `DOUBLE_QUANT`,
+  `OUTPUT_DIR`, `FORCE`, and `HF_TOKEN`.
+- **Reproducible**: writes a `manifest.json` beside the checkpoint — resolved HF revision, quant
+  params, resolved `torch`/`transformers`/`bitsandbytes`/`vllm` versions, per-file SHA-256s.
+- **Idempotent**: if a manifest with a matching signature plus `config.json` and a `*.safetensors`
+  file exist, it exits 0 without importing torch; `--force` (or `FORCE=1`) rebuilds.
 
-The AppHost auto-selects it: if `models/MagenticBrain-bnb-nf4/` exists it serves that path,
-otherwise it falls back to `microsoft/MagenticBrain` with in-flight quantization.
+The AppHost runs it as a **one-shot job gated before vLLM** via `WaitForCompletion(quantizer)`, which
+also keeps the GPU single-tenant (the quantizer releases VRAM before the server starts). Two
+execution modes, selected by the `UseContainerQuant` config flag (read synchronously at build time
+so the resource graph is known):
+
+- **Dev (default, `false`)** — polyglot `AddPythonApp("quantizer", …, "quantize.py").WithUv()`; `uv`
+  runs the script on the host. No Docker build; the first run `uv sync`s torch.
+- **Reproducible (`true`)** — `AddContainer("quantizer", "magenticbrain-vllm", "local")` with
+  `--gpus all --ipc host`, bind-mounting the quantizer, `models/`, and the HF cache, entrypoint
+  `python3`. The pinned CUDA image pins the whole toolchain.
+
+Both branches pass the same config through `WithEnvironment` and land the same host checkpoint; vLLM
+always serves `/models/MagenticBrain-bnb-nf4` (models mounted read-only at `/models`). The retired
+"auto-detect the prequant dir" branch is gone — the idempotent job always runs and fast-skips.
+`scripts/prequantize.{sh,py}` remain for a manual, Aspire-free pre-warm; the orchestrated job detects
+their output and skips.
 
 vLLM invocation note: the base image `ENTRYPOINT` is `["vllm", "serve"]`, so the **model id/path is
-the first positional argument**, not `--model`.
+the first positional argument**, not `--model` (`WithModel(...)` must precede `WithArgs(...)`).
+
+## vLLM as an Aspire integration (`AddVLLM`)
+
+vLLM is wired through a small, self-contained integration, `CommunityToolkit.Aspire.Hosting.VLLM`
+(under `src/`), rather than a raw `AddContainer`. It mirrors the Community Toolkit's Ollama
+integration: `AddVLLM(name, port?)` registers the `vllm/vllm-openai` image (pinned `v0.26.0`), an
+`http` endpoint on 8000, and a `/health` check that only reports healthy once the model is loaded;
+fluent helpers add GPU support (`WithGPUSupport(VLLMGpuVendor.Nvidia|AMD)` → `--gpus all` or the
+`-rocm` image tag), `WithDataVolume()` (HF cache), `WithHuggingFaceToken`, `WithModel`, and
+`WithServedModelName`.
+
+Because MagenticBrain needs bitsandbytes (absent from the stock image) and a non-thinking template,
+the AppHost overrides the integration's image with the local `magenticbrain-vllm:local` build via
+`.WithImageRegistry(null!).WithImage("magenticbrain-vllm", "local")` — the `null!` clears the
+registry so the local-only image isn't pulled. All prior serving args are preserved through
+`WithModel` / `WithServedModelName` / `WithArgs`, byte-identical to the earlier `AddContainer` config
+(verified against the published manifest).
+
+The integration is authored to be **upstream-portable** (file/namespace layout matches
+CommunityToolkit/Aspire) with unit tests (`tests/`) and a minimal example (`examples/vllm/`); it is
+staged for a possible contribution but not yet submitted.
 
 ## Non-thinking by default (chat template patch)
 
