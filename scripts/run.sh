@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the full local stack with .NET Aspire:
+# Run the full local stack with Aspire:
 #   vLLM (GPU, MagenticBrain 4-bit) + Ollama (CPU embeddings) + MarkItDown MCP + Blazor chat UI.
 #
 # This uses `dotnet run` on the AppHost with the HTTP launch profile, which is the

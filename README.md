@@ -2,7 +2,7 @@
 
 Run [`microsoft/MagenticBrain`](https://huggingface.co/microsoft/MagenticBrain) — a 14B,
 Qwen3-14B-based **tool-orchestration** model — **locally on a single 16 GB GPU** with
-**vLLM (Docker)**, orchestrated by **.NET Aspire**, behind the **.NET AI Chat Web App**
+**vLLM (Docker)**, orchestrated by **Aspire**, behind the **.NET AI Chat Web App**
 (`aichatweb`) template configured for **full RAG** (retrieval-augmented generation with
 citations).
 
@@ -15,14 +15,14 @@ vector store. No cloud endpoints, no API keys.
 
 <p align="center">
   <img src="docs/architecture.svg" width="820"
-       alt="A .NET Aspire AppHost orchestrates four containers: a Blazor chat web app, a vLLM GPU container serving MagenticBrain over an OpenAI-compatible /v1 endpoint, an Ollama CPU container for nomic-embed-text embeddings, and a MarkItDown MCP container for PDF-to-Markdown conversion. The web app reads and writes a local SqliteVec vector store.">
+       alt="An Aspire AppHost orchestrates four containers: a Blazor chat web app, a vLLM GPU container serving MagenticBrain over an OpenAI-compatible /v1 endpoint, an Ollama CPU container for nomic-embed-text embeddings, and a MarkItDown MCP container for PDF-to-Markdown conversion. The web app reads and writes a local SqliteVec vector store.">
 </p>
 
 <details>
 <summary>Text version of the architecture</summary>
 
 ```
-.NET Aspire AppHost  (orchestrates everything, dashboard for logs/health/traces)
+Aspire AppHost  (orchestrates everything, dashboard for logs/health/traces)
 │
 ├── vllm            custom image: vllm/vllm-openai + bitsandbytes + non-thinking template
 │                   GPU (--gpus all --ipc host), serves MagenticBrain 4-bit (NF4)
@@ -53,7 +53,7 @@ they don't compete with the 14B model for VRAM.
   works through the Windows NVIDIA driver.
   - Smoke test: `docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi`
 - **.NET 10 SDK** (projects target `net10.0`).
-- **.NET Aspire CLI ≥ 13.4** (optional — `scripts/run.sh` uses `dotnet run` and does not need
+- **Aspire CLI ≥ 13.4** (optional — `scripts/run.sh` uses `dotnet run` and does not need
   the CLI). Install/update: `curl -sSL https://aspire.dev/install.sh | bash`.
 - **~30 GB free disk**: the FP16 weights (~28 GB) download once to the Hugging Face cache, plus
   the ~10 GB vLLM base image and the ~9 GB pre-quantized checkpoint.

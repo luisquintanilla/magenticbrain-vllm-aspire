@@ -21,7 +21,7 @@
   <rect x="0" y="0" width="1000" height="690" fill="#ffffff"/>
 
   <!-- Title -->
-  <text x="500" y="40" text-anchor="middle" class="h1">Local RAG on your GPU — MagenticBrain · vLLM · .NET Aspire</text>
+  <text x="500" y="40" text-anchor="middle" class="h1">Local RAG on your GPU — MagenticBrain · vLLM · Aspire</text>
   <text x="500" y="64" text-anchor="middle" class="h2">Everything runs locally: the 14B LLM, embeddings, document ingestion, and the vector store</text>
 
   <!-- Browser -->
@@ -30,7 +30,7 @@
 
   <!-- Aspire cluster -->
   <rect x="40" y="158" width="920" height="452" rx="16" fill="#F7F5FD" stroke="#6F4BD8" stroke-width="2"/>
-  <text x="500" y="182" text-anchor="middle" font-size="13" font-weight="600" fill="#5b3fb0">.NET Aspire AppHost  ·  orchestration · health-gated startup · dashboard</text>
+  <text x="500" y="182" text-anchor="middle" font-size="13" font-weight="600" fill="#5b3fb0">Aspire AppHost  ·  orchestration · health-gated startup · dashboard</text>
 
   <!-- Web (project) -->
   <rect x="95" y="238" width="250" height="158" rx="12" fill="#EEE9FC" stroke="#512BD4" stroke-width="2" filter="url(#ds)"/>
